@@ -1,0 +1,32 @@
+#bin/bash
+s3folder=$3
+zip asg-lifecycle-hook ../lambda/asg-lifecycle-hook/index.js ../lambda/asg-lifecycle-hook/package.json
+aws s3 cp ./asg-lifecycle-hook.zip s3://$2$3/asg-lifecycle-hook
+aws s3 cp ./consul.json s3://$2$3/consul.json
+aws s3 cp ./vpc.json s3://$2$3/vpc.json
+aws cloudformation update-stack  --stack-name $1 --capabilities CAPABILITY_IAM --template-url https://s3.amazonaws.com/$2$3/consul.json --parameters ParameterKey=KeyName,ParameterValue=$4 ParameterKey=AZ,ParameterValue=\"eu-west-1a,eu-west-1b\" ParameterKey=S3Bucket,ParameterValue=$2 ParameterKey=S3Folder,ParameterValue=${s3folder:1}
+
+echo 'Waiting for stack to be updated'
+
+while true; do
+status=$(aws cloudformation describe-stacks --stack-name $1 | jq -r '.Stacks[0].StackStatus')
+echo -n '.'
+if [[ "$status" != "UPDATE_IN_PROGRESS" ]] && [[ "$status" != "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS" ]]
+ then
+  if [[ "$status" == "UPDATE_COMPLETE" ]]
+    then
+      echo
+      echo 'Stack sucessfully updated!'
+      echo -n "Consul GUI URL: "
+      echo $(aws cloudformation describe-stacks --stack-name Consul | jq -r '.Stacks[0].Outputs[] | select(.OutputKey=="ConsulGuiDNSName") | .OutputValue')
+      echo
+      break
+    else
+      echo
+      echo 'Stack update failed!'
+      echo 'Status: '$status
+      break
+  fi
+fi
+sleep 1
+done

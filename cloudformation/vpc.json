@@ -1,0 +1,261 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "VPC with two subnets and application load balancer",
+  "Mappings": {
+    "VpcCidrs": {
+      "eu-central-1": {
+        "vpc": "10.0.0.0/16",
+        "pubsubnet1": "10.0.0.0/24",
+        "pubsubnet2": "10.0.1.0/24"
+      },
+      "eu-west-1": {
+        "vpc": "10.0.0.0/16",
+        "pubsubnet1": "10.0.0.0/24",
+        "pubsubnet2": "10.0.1.0/24"
+      }
+    }
+  },
+  "Parameters": {
+    "AZ": {
+      "Type": "CommaDelimitedList",
+      "Description": "The Availability Zones"
+    }
+  },
+  "Resources": {
+    "Vpc": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": {
+          "Fn::FindInMap": [
+            "VpcCidrs",
+            {
+              "Ref": "AWS::Region"
+            },
+            "vpc"
+          ]
+        },
+        "EnableDnsSupport": "true",
+        "EnableDnsHostnames": "true",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join" : [ " ", [ {"Ref" : "AWS::StackName"}, "VPC" ] ]
+            }
+          }
+        ]
+      }
+    },
+    "PubSubnetAz1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "CidrBlock": {
+          "Fn::FindInMap": [
+            "VpcCidrs",
+            {
+              "Ref": "AWS::Region"
+            },
+            "pubsubnet1"
+          ]
+        },
+        "AvailabilityZone": {
+          "Fn::Select": [
+            "0",
+            {"Ref": "AZ"}
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join" : [ " ", [ {"Ref" : "AWS::StackName"}, "SubNet 1" ] ]
+            }
+          }
+        ]
+      }
+    },
+    "PubSubnetAz2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "CidrBlock": {
+          "Fn::FindInMap": [
+            "VpcCidrs",
+            {
+              "Ref": "AWS::Region"
+            },
+            "pubsubnet2"
+          ]
+        },
+        "AvailabilityZone": {
+          "Fn::Select": [
+            "1",
+            {"Ref": "AZ"}
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join" : [ " ", [ {"Ref" : "AWS::StackName"}, "SubNet 2" ] ]
+            }
+          }
+        ]
+      }
+    },
+    "InternetGateway": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+      }
+    },
+    "AttachGateway": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "InternetGatewayId": {
+          "Ref": "InternetGateway"
+        }
+      }
+    },
+    "RouteViaIgw": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        }
+      }
+    },
+    "PublicRouteViaIgw": {
+      "Type": "AWS::EC2::Route",
+      "DependsOn": "AttachGateway",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "RouteViaIgw"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "InternetGateway"
+        }
+      }
+    },
+    "PubSubnet1RouteTableAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "PubSubnetAz1"
+        },
+        "RouteTableId": {
+          "Ref": "RouteViaIgw"
+        }
+      }
+    },
+    "PubSubnet2RouteTableAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "PubSubnetAz2"
+        },
+        "RouteTableId": {
+          "Ref": "RouteViaIgw"
+        }
+      }
+    },
+    "ElbSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "ELB Allowed Ports",
+        "VpcId": { "Ref" : "Vpc" },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "80",
+            "ToPort": "80",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "LoadBalancer" : {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "Scheme" : "internet-facing",
+        "Subnets" : [ {"Ref": "PubSubnetAz1"}, {"Ref" : "PubSubnetAz2"}],
+        "SecurityGroups": [{"Ref": "ElbSecurityGroup"}],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join" : [ " ", [ {"Ref" : "AWS::StackName"}, "LoadBalancer" ] ]
+            }
+          }
+        ]
+      }
+    },
+    "DefaultTargetGroup" : {
+      "Type" : "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties" : {
+        "Port": 10,
+        "Protocol": "HTTP",
+        "VpcId": {"Ref" : "Vpc"}
+      }
+    },
+    "Listener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "DefaultActions": [{
+                             "Type": "forward",
+                             "TargetGroupArn": { "Ref": "DefaultTargetGroup" }
+                           }],
+        "LoadBalancerArn": { "Ref": "LoadBalancer" },
+        "Port": "80",
+        "Protocol": "HTTP"
+      }
+    }
+  },
+  "Outputs": {
+    "VPC": {
+      "Description": "The VPC",
+      "Value": {
+        "Ref": "Vpc"
+      }
+    },
+    "PubSubnetAz1": {
+      "Description": "The subnet on AZ 1",
+      "Value": {
+        "Ref": "PubSubnetAz1"
+      }
+    },
+    "PubSubnetAz2": {
+      "Description": "The subnet on AZ 2",
+      "Value": {
+        "Ref": "PubSubnetAz2"
+      }
+    },
+    "LoadBalancer": {
+      "Description": "The Load Balancer",
+      "Value": {
+        "Ref": "LoadBalancer"
+      }
+    },
+    "LoadBalancerDNSName": {
+      "Description": "The Load Balancer DNS name",
+      "Value": {
+        "Fn::GetAtt" : [ "LoadBalancer", "DNSName" ]
+      }
+    },
+    "LoadBalancerSecurityGroup": {
+      "Description": "The Load Balancer security group ID",
+      "Value" : {
+        "Fn::GetAtt" : [ "ElbSecurityGroup", "GroupId" ]
+      }
+    }
+  }
+}
+
