@@ -539,7 +539,7 @@
                   "Fn::Join": [
                     "",
                     [
-                      "docker pull progrium/consul"
+                      "docker pull gliderlabs/consul-server"
                     ]
                   ]
                 }
