@@ -50,11 +50,6 @@
       "Type": "String",
       "Description": "Name of an existing S3 bucket where cloudformation templates will be stored"
     },
-    "S3Folder": {
-      "Type": "String",
-      "Description": "Name of the folder within the S3 bucket where cloudformation templates will be stored.",
-      "Default": ""
-    },
     "DesiredClusterSize": {
       "Type": "Number",
       "Description": "Desired number of Consul nodes in the cluster",
@@ -109,13 +104,6 @@
             [
               "https://s3.amazonaws.com/",
               {"Ref": "S3Bucket"},
-              "/",
-              {"Fn::Join": [
-                "",
-                [
-                  {"Ref": "S3Folder"}
-                ]
-              ]},
               "/vpc.json"
             ]
           ]
@@ -740,15 +728,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": {"Ref": "S3Bucket"},
-          "S3Key": {
-            "Fn::Join": [
-              "",
-              [
-                {"Ref": "S3Folder"},
-                "/asg-lifecycle-hook-lambda.zip"
-              ]
-            ]
-          }
+          "S3Key": "limestone/asg-lifecycle-hook-lambda.zip"
         },
         "Role": {
           "Fn::GetAtt": [
