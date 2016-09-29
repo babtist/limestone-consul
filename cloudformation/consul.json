@@ -942,7 +942,7 @@
         "HealthCheckPath" : "/ui/",
         "Name" : {
           "Fn::Join": [
-            " ",
+            "",
             [
               {"Ref": "AWS::StackName"},
               "TargetGroup"
