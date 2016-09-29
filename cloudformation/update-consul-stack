@@ -1,11 +1,9 @@
 #bin/bash
-s3folder=$3
 zip asg-lifecycle-hook ../lambda/asg-lifecycle-hook/index.js ../lambda/asg-lifecycle-hook/package.json
-aws s3 cp ./asg-lifecycle-hook.zip s3://$2$3/asg-lifecycle-hook
-aws s3 cp ./consul.json s3://$2$3/consul.json
-aws s3 cp ./vpc.json s3://$2$3/vpc.json
-aws cloudformation update-stack  --stack-name $1 --capabilities CAPABILITY_IAM --template-url https://s3.amazonaws.com/$2$3/consul.json --parameters ParameterKey=KeyName,ParameterValue=$4 ParameterKey=AZ,ParameterValue=\"eu-west-1a,eu-west-1b\" ParameterKey=S3Bucket,ParameterValue=$2 ParameterKey=S3Folder,ParameterValue=${s3folder:1}
-
+aws s3 cp ./asg-lifecycle-hook.zip s3://$2/limestone/asg-lifecycle-hook-lambda.zip
+aws s3 cp ./consul.json s3://$2/consul.json
+aws s3 cp ./vpc.json s3://$2/vpc.json
+aws cloudformation update-stack --stack-name $1 --capabilities CAPABILITY_IAM --template-url https://s3.amazonaws.com/$2/consul.json --parameters ParameterKey=KeyName,ParameterValue=$3 ParameterKey=AZ,ParameterValue=\"$4\" ParameterKey=S3Bucket,ParameterValue=$2
 echo 'Waiting for stack to be updated'
 
 while true; do
