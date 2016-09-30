@@ -17,11 +17,14 @@ The Cloudformation template used in this post currently only supports deployment
 
 ## Create the stack
 1. Clone this GitHub repo.
+```
+git clone https://github.com/babtist/limestone-consul.git
+```
 2. Run the script to create the Consul cluster. Replace *&lt;your_stack_name&gt;* with a name that choose for your stack. Replace *&lt;s3_bucket&gt;* with the name of your S3 bucket. Replace *&lt;key_pair_name&gt;* with the name of your EC2 Key Pair name. Replace *&lt;availability_zones&gt;* with a list of two availability zones to be used, e.g. eu-west-1a,eu-west-1b
 ```
-    cd limestone-consul/cloudformation
-    chmod 700 create-consul-stack
-    ./create-consul-stack <your_stack_name> <s3_bucket> <key_pair_name> <availability_zones>
+cd limestone-consul/cloudformation
+chmod 700 create-consul-stack
+./create-consul-stack <your_stack_name> <s3_bucket> <key_pair_name> <availability_zones>
 ```
 Example:
 ```
